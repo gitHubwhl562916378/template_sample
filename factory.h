@@ -62,7 +62,7 @@ public:
             return (i->second)();
         }
 
-        return FactoryErrorPolicy<IdentifierType, AbstractProduct>::OnUnknownType(id);
+        return this->OnUnknownType(id);
     }
 
 private:
