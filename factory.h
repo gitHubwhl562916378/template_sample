@@ -9,10 +9,10 @@ public:
     class Exception : public std::exception
     {
     public:
-        Exception(const IdentifierType& unkownId)
-            :unknownId_(unkownId){}
+        Exception(const IdentifierType &unkownId)
+            : unknownId_(unkownId) {}
 
-        const char* what() const noexcept override
+        const char *what() const noexcept override
         {
             return "Unknown object type passed to Factory";
         }
@@ -27,38 +27,31 @@ public:
     };
 
 protected:
-    ProductType* OnUnknownType(const IdentifierType& id)
+    ProductType OnUnknownType(const IdentifierType &id)
     {
         throw Exception(id);
     }
 };
 
-template
-<
-    class AbstractProduct,
-    class IdentifierType,
-    class ProductCreator = std::function<AbstractProduct*(void)>,
-    template<typename, class>
-        class FactoryErrorPolicy = DefaultFactoryError
->
-class Factory
-    : public FactoryErrorPolicy<IdentifierType, AbstractProduct>
+template <class AbstractProduct, class IdentifierType, class ProductCreator = std::function<AbstractProduct(void)>,
+          template <typename, class> class FactoryErrorPolicy = DefaultFactoryError>
+class Factory : public FactoryErrorPolicy<IdentifierType, AbstractProduct>
 {
 public:
-    bool Register(const IdentifierType& id, ProductCreator functor)
+    bool Register(const IdentifierType &id, ProductCreator functor)
     {
         return associations_.insert(std::make_pair(id, functor)).second;
     }
 
-    bool Unregister(const IdentifierType& id)
+    bool Unregister(const IdentifierType &id)
     {
         return associations_.erase(id);
     }
 
-    AbstractProduct* CreateObject(const IdentifierType& id)
+    AbstractProduct CreateObject(const IdentifierType &id)
     {
         typename std::map<IdentifierType, ProductCreator>::const_iterator i = associations_.find(id);
-        if(i != associations_.end())
+        if (i != associations_.end())
         {
             return (i->second)();
         }
