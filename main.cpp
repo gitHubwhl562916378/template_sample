@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include "factory.h"
 #include "dispatcher_policies.hpp"
+#include "double_functor_dispatcher.hpp"
 
 class Shap
 {
@@ -21,6 +22,35 @@ public:
     }
 };
 
+class Rectangle : public Shap
+{
+public:
+    void Rote(const float angle)
+    {
+        std::cout << angle << std::endl;
+    }
+};
+
+void DrawUnion(Box &b, Rectangle &r)
+{
+    std::cout << "DrawUnion" << std::endl;
+}
+
+class Tool
+{
+public:
+    virtual ~Tool() {}
+};
+
+class Compass : public Tool
+{
+};
+
+void DrawCompass(Box &b, Compass &t)
+{
+    std::cout << "DrawCompass" << std::endl;
+}
+
 class Command
 {
 public:
@@ -32,7 +62,6 @@ public:
 template <template <typename, class> class DispatcherPolicy = Dispatcher>
 class TaskPublisher final : public DispatcherPolicy<int, std::shared_ptr<Command>>
 {
-public:
 };
 
 //只有当T不是一个智能指针类型的时候，类型D继承于T;不是的话类型不存在，编译报错
@@ -72,6 +101,33 @@ int main(int argc, char **argv)
     auto asyncTaskPub = std::make_shared<TaskPublisher<AsyncDispatcher>>();
     asyncTaskPub->AddSub(std::make_shared<Command>());
     asyncTaskPub->Dispatch(3);
+
+#if 0 // BaseLhs, 与BaseRhs不相同时
+    DoubleFunctorDispatcher<Shap, Tool, StaticCaster> doubleFnDisp;
+    doubleFnDisp.Add<Box, Compass, DrawCompass>(true);
+    Box bb;
+    Compass cmss;
+    doubleFnDisp.Excute(bb, cmss);
+    //二次添加覆盖
+    doubleFnDisp.Add<Box, Compass>([](Box &b, Compass &c)
+                                   { std::cout << "Compass in lamuda" << std::endl; });
+    doubleFnDisp.Excute(bb, cmss);
+
+#else // BaseLhs, 与BaseRhs不相同时
+    DoubleFunctorDispatcher<Shap, Shap, StaticCaster> doubleFnDisp;
+    doubleFnDisp.Add<Box, Rectangle, DrawUnion>(true);
+    Box bb;
+    Rectangle r;
+    doubleFnDisp.Excute(r, bb);
+    doubleFnDisp.Excute(bb, r); // BaseLhs与BaseRhs相同，可以反向参数调用，Add(true)已将全局函数中返回调用添加
+
+    doubleFnDisp.Add<Box, Rectangle>([](Box &b, Rectangle &r)
+                                     { std::cout << "Rectangle in lamuda" << std::endl; });
+    doubleFnDisp.Add<Rectangle, Box>([](Rectangle &r, Box &b)
+                                     { std::cout << "Rectangle in lamuda" << std::endl; });
+    doubleFnDisp.Excute(r, bb);
+    doubleFnDisp.Excute(bb, r); // BaseLhs与BaseRhs相同，可以反向参数调用，通过添加对称的函数对象
+#endif
 
     //等待异步操作完成，如AsyncDispatcher
     ::getchar();
