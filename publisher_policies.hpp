@@ -37,10 +37,10 @@ struct is_smart_pointer : is_smart_pointer_helper<typename std::remove_cv<T>::ty
 };
 
 template <typename D, class T>
-class Dispatcher
+class Publisher
 {
 public:
-    virtual ~Dispatcher() {}
+    virtual ~Publisher() {}
 
     void AddSub(const T &t)
     {
@@ -50,11 +50,12 @@ public:
     void Dispatch(const D &d)
     {
         std::for_each(m_subs.begin(), m_subs.end(), [&d](const T &sub)
-                      { if constexpr (m_tIsPointer){
-                          sub->HandleData(d);
-                      }else{
-                          sub.HandleData(d);
-                      } });
+                      {
+            if constexpr (m_tIsPointer) {
+                sub->HandleData(d);
+            } else {
+                sub.HandleData(d);
+            } });
     }
 
 private:
@@ -63,18 +64,18 @@ private:
 };
 
 template <typename D, class T>
-class AsyncDispatcher : public Dispatcher<D, T>
+class AsyncPublisher : public Publisher<D, T>
 {
 public:
-    AsyncDispatcher()
+    AsyncPublisher()
     {
         std::promise<void> start_ok;
         auto fut = start_ok.get_future();
-        m_thread = std::thread(&AsyncDispatcher::Process, this, std::ref(start_ok));
+        m_thread = std::thread(&AsyncPublisher::Process, this, std::ref(start_ok));
         fut.get();
     }
 
-    ~AsyncDispatcher()
+    ~AsyncPublisher()
     {
         m_shutDown = true;
         m_cv.notify_one();
@@ -116,7 +117,7 @@ private:
                 m_queue.pop();
             }
 
-            Dispatcher<D, T>::Dispatch(temp);
+            Publisher<D, T>::Dispatch(temp);
         }
     }
 
