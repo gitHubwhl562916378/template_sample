@@ -67,7 +67,8 @@ template <typename D, class T>
 class AsyncPublisher : public Publisher<D, T>
 {
 public:
-    AsyncPublisher()
+    AsyncPublisher(const uint64_t maxQueueSize = 50)
+        : m_maxQueueSize(maxQueueSize)
     {
         std::promise<void> start_ok;
         auto fut = start_ok.get_future();
@@ -89,6 +90,10 @@ public:
     {
         {
             std::lock_guard<std::mutex> lock(m_mtx);
+            if (m_maxQueueSize <= m_queue.size())
+            {
+                m_queue.pop();
+            }
             m_queue.push(d);
         }
         m_cv.notify_one();
@@ -124,6 +129,7 @@ private:
 private:
     std::queue<D> m_queue;
     std::mutex m_mtx;
+    const uint64_t m_maxQueueSize;
     std::condition_variable m_cv;
     volatile bool m_shutDown = false;
     std::thread m_thread;
