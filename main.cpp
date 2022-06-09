@@ -3,7 +3,7 @@
 #include <memory>
 #include <typeinfo>
 #include "factory.h"
-#include "dispatcher_policies.hpp"
+#include "publisher_policies.hpp"
 #include "double_functor_dispatcher.hpp"
 
 class Shap
@@ -59,7 +59,7 @@ public:
         std::cout << "Command HandleData " << d << std::endl;
     }
 };
-template <template <typename, class> class DispatcherPolicy = Dispatcher>
+template <template <typename, class> class DispatcherPolicy = Publisher>
 class TaskPublisher final : public DispatcherPolicy<int, std::shared_ptr<Command>>
 {
 };
@@ -67,7 +67,7 @@ class TaskPublisher final : public DispatcherPolicy<int, std::shared_ptr<Command
 //只有当T不是一个智能指针类型的时候，类型D继承于T;不是的话类型不存在，编译报错
 // std::enable_if<bool con, T = void>::type 当con为true的时候，表达式是一个类型，不为true的时候类型T未定义
 template <class T>
-class D : public std::enable_if<!is_smart_pointer<T>::value, T>::type
+class D : public std::enable_if<!is_shared_pointer<T>::value, T>::type
 {
 };
 
@@ -89,16 +89,16 @@ int main(int argc, char **argv)
     }
 
     //直接使用policy,通过类型创建
-    std::shared_ptr<Dispatcher<int, std::shared_ptr<Command>>> dis = std::make_shared<AsyncDispatcher<int, std::shared_ptr<Command>>>();
+    std::shared_ptr<Publisher<int, std::shared_ptr<Command>>> dis = std::make_shared<AsyncPublisher<int, std::shared_ptr<Command>>>();
     dis->AddSub(std::make_shared<Command>());
     dis->Dispatch(3);
 
-    dis = std::make_shared<Dispatcher<int, std::shared_ptr<Command>>>();
+    dis = std::make_shared<Publisher<int, std::shared_ptr<Command>>>();
     dis->AddSub(std::make_shared<Command>());
     dis->Dispatch(3);
 
     //通过再次定义具体类型，传入需要的policy名称来创建，类似于策略模式
-    auto asyncTaskPub = std::make_shared<TaskPublisher<AsyncDispatcher>>();
+    auto asyncTaskPub = std::make_shared<TaskPublisher<AsyncPublisher>>();
     asyncTaskPub->AddSub(std::make_shared<Command>());
     asyncTaskPub->Dispatch(3);
 

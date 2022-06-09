@@ -11,28 +11,38 @@
 #include <algorithm>
 
 template <typename T>
-struct is_smart_pointer_helper : public std::false_type
+struct is_shared_pointer_helper : public std::false_type
 {
 };
 
 template <typename T>
-struct is_smart_pointer_helper<std::shared_ptr<T>> : public std::true_type
+struct is_shared_pointer_helper<std::shared_ptr<T>> : public std::true_type
 {
 };
 
 template <typename T>
-struct is_smart_pointer_helper<std::unique_ptr<T>> : public std::true_type
+struct is_weak_pointer_helper : public std::false_type
 {
 };
 
 template <typename T>
-struct is_smart_pointer_helper<std::weak_ptr<T>> : public std::true_type
+struct is_weak_pointer_helper<std::weak_ptr<T>> : public std::true_type
 {
     /* data */
 };
 
 template <typename T>
-struct is_smart_pointer : is_smart_pointer_helper<typename std::remove_cv<T>::type>
+struct is_shared_pointer : is_shared_pointer_helper<typename std::remove_cv<T>::type>
+{
+};
+
+template <typename T>
+struct is_weak_pointer : is_weak_pointer_helper<typename std::remove_cv<T>::type>
+{
+};
+
+template <class T>
+struct TFT : public std::false_type
 {
 };
 
@@ -51,16 +61,20 @@ public:
     {
         std::for_each(m_subs.begin(), m_subs.end(), [&d](const T &sub)
                       {
-            if constexpr (m_tIsPointer) {
+            if constexpr (std::is_pointer<T>::value | is_shared_pointer<T>::value) {
                 sub->HandleData(d);
+            } else if constexpr (is_weak_pointer<T>::value) {
+                auto p = sub.lock();
+                if (nullptr != p) {
+                    p->HandleData(d);
+                }
             } else {
-                sub.HandleData(d);
+                static_assert(TFT<T>::value, "subdescriber should be pointer type");
             } });
     }
 
 private:
     std::vector<T> m_subs;
-    constexpr static bool m_tIsPointer = std::is_pointer<T>::value | is_smart_pointer<T>::value;
 };
 
 template <typename D, class T>
